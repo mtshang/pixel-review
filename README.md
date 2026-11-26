@@ -60,6 +60,16 @@ if (!(Test-Path -LiteralPath $cat)) { Copy-Item -LiteralPath '.\examples\cat.png
 - 用 `--out-dir` 和 `--out-name` 指定预览的位置与文件名。已有的同名预览会被替换。读取自定义预览时加 `--preview`。默认另存编辑版，可保留原始的调色板和附加元数据供日后使用。
 - 程序输出一行 JSON。compare 遇到不同像素会列出两份文件、差异数量、样本坐标以及实际和期望颜色。[完整命令与返回值](cli.md)
 
+## 检查版本
+
+在工具根目录打开 PowerShell 或命令提示符，运行下面这条命令。脚本读取本地根目录的 version.json，并从 GitHub 的 main 分支读取同名文件。脱离工具目录调用时，把命令末尾的脚本路径换成绝对路径。
+
+~~~powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\check-version.ps1"
+~~~
+
+输出使用英文。Update needed 为 Yes 表示云端较新（退出码 1），No 表示本地相同或更新（退出码 0），Unknown 表示本次无法完成比较（退出码 2）。单独复制 EXE 的用户如需检查版本，也要带上根目录的 version.json 和 scripts 下的检查脚本，保持目录结构。
+
 ## 安装空间与许可
 
 单独使用时，复制 `scripts/pixel-review.exe` 即可。1.12.0 的 Windows x64 程序为 **1,490,944 字节（约 1.42 MiB）**，额外运行环境的安装空间为 **0 字节**。处理时仍需为图片、临时输出和编辑副本预留空间。

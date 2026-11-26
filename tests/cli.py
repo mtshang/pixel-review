@@ -1,6 +1,7 @@
 """Integration checks. Development only: Python 3 + Pillow."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
@@ -34,6 +35,47 @@ class PixelReview(unittest.TestCase):
         run = subprocess.run(args, capture_output=True)
         self.assertEqual(run.returncode, code, run.stdout + run.stderr)
         return json.loads(run.stdout)
+
+    def test_version_checker(self):
+        scripts = self.dir / "installed" / "scripts"
+        scripts.mkdir(parents=True)
+        checker = scripts / "check-version.ps1"
+        checker.write_bytes((ROOT / "scripts" / checker.name).read_bytes())
+        manifest = scripts.parent / "version.json"
+        # Exercise the actual PowerShell entry point offline, from another directory.
+        command = """
+            function Invoke-RestMethod {
+                if ($env:PX_TEST_OFFLINE -eq '1') { throw 'Offline' }
+                @{ encoding = 'base64'; content = [Convert]::ToBase64String(
+                    [Text.Encoding]::UTF8.GetBytes($env:PX_TEST_CLOUD)) }
+            }
+            & $env:PX_TEST_CHECKER
+            exit $LASTEXITCODE
+        """
+        valid = lambda v: json.dumps({"version": v})
+        cases = [
+            (valid("1.9.0"), valid("1.12.0"), "1.9.0", "1.12.0", "Yes", 1),
+            (valid("1.12.0"), valid("1.12.0"), "1.12.0", "1.12.0", "No", 0),
+            (valid("2.0.0"), valid("1.12.0"), "2.0.0", "1.12.0", "No", 0),
+            (None, valid("1.12.0"), "Unknown", "1.12.0", "Unknown", 2),
+            (valid("1.12.0"), "{}", "1.12.0", "Unknown", "Unknown", 2),
+            (valid("1.12.0"), None, "1.12.0", "Unknown", "Unknown", 2),
+        ]
+        for local, remote, left, right, update, code in cases:
+            with self.subTest(local=local, remote=remote):
+                if local is None:
+                    manifest.unlink(missing_ok=True)
+                else:
+                    manifest.write_text(local, encoding="utf-8")
+                env = dict(os.environ, PX_TEST_CHECKER=str(checker),
+                           PX_TEST_CLOUD=remote or "", PX_TEST_OFFLINE=str(int(remote is None)))
+                run = subprocess.run(["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                                      "-Command", command], cwd=self.dir, env=env, capture_output=True, timeout=30)
+                lines = run.stdout.decode("ascii").splitlines()
+                self.assertEqual((run.returncode, run.stderr), (code, b""), lines)
+                self.assertEqual(lines[:4], [f"Local version: {left}", f"Cloud version: {right}",
+                                 "GitHub link: https://github.com/mtshang/pixel-review", f"Update needed: {update}"])
+                self.assertEqual(any(line.startswith("Error: ") for line in lines[4:]), code == 2)
 
     def test_auto_zoom_full_region_and_rounding(self):
         for target, scale in [(None,400),(9,2),(10,2),(11,3),(1,1)]:

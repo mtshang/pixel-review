@@ -27,6 +27,10 @@ $src = '.\examples\cat.png'
 & $px compare --source $src --scale 8 --preview '.\work\cat-large.png'
 ~~~
 
+## 独立版本检查脚本
+
+在工具目录调用 `powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\scripts\check-version.ps1"`。四行英文文本依次为 Local version、Cloud version、GitHub link、Update needed。比较目标是 GitHub main 分支根目录的 version.json。退出码 0、1、2 分别对应 No、Yes、Unknown。失败时保留已读到的版本，并追加英文错误信息。
+
 ## 输入与定位
 
 ### 方案评审图
