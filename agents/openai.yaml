@@ -1,0 +1,4 @@
+interface:
+  display_name: "像素画观察与修改"
+  short_description: "精确放大透明 PNG，检查坐标和颜色，修改原图并验证预览"
+  default_prompt: "用 $pixel-review 放大观察这张像素画，定位需要调整的像素，修改后按原尺寸复看。"
