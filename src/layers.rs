@@ -57,11 +57,47 @@ impl Stack {
     }
 
     pub fn is_plain(&self, size: Point) -> bool {
-        self.palette.is_empty() && self.layers.len() == 1
+        self.palette.is_empty()
+            && self.layers.len() == 1
             && self.layers[0].name == "Base"
             && self.layers[0].visible
             && self.layers[0].at == [0, 0]
             && self.layers[0].image.view().area() == [0, 0, size[0], size[1]]
+    }
+
+    pub(crate) fn composite_row<'a>(
+        visible: impl IntoIterator<Item = &'a Layer>,
+        view: View,
+        y: u32,
+        row: &mut [u8],
+    ) {
+        row.fill(0);
+        let y = i64::from(y);
+        for (index, layer) in visible.into_iter().enumerate() {
+            let [x0, y0] = layer.at.map(i64::from);
+            let native = layer.image.view();
+            if y < y0 || y >= y0 + i64::from(native.h) {
+                continue;
+            }
+            let left = x0.max(i64::from(view.x));
+            let right = (x0 + i64::from(native.w)).min(i64::from(view.x + view.w));
+            if right <= left {
+                continue;
+            }
+            let src =
+                layer
+                    .image
+                    .row_span((left - x0) as u32, (y - y0) as u32, (right - left) as u32);
+            let offset = (left - i64::from(view.x)) as usize * 4;
+            let dst = &mut row[offset..offset + src.len()];
+            if index == 0 {
+                dst.copy_from_slice(src);
+            } else {
+                for (top, bottom) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
+                    over(top, bottom);
+                }
+            }
+        }
     }
 
     pub fn render(&self, dest: &Path, view: View) -> Result<NamedTempFile> {
@@ -69,34 +105,7 @@ impl Stack {
         let visible: Vec<_> = self.layers.iter().filter(|l| l.visible).collect();
         let mut row = vec![0; view.w as usize * 4];
         base.stage_rows(dest, view, |local_y, expanded| {
-            row.fill(0);
-            let y = i64::from(view.y + local_y);
-            for (index, layer) in visible.iter().enumerate() {
-                let [x0, y0] = layer.at.map(i64::from);
-                let native = layer.image.view();
-                if y < y0 || y >= y0 + i64::from(native.h) {
-                    continue;
-                }
-                let left = x0.max(i64::from(view.x));
-                let right = (x0 + i64::from(native.w)).min(i64::from(view.x + view.w));
-                if right <= left {
-                    continue;
-                }
-                let src = layer.image.row_span(
-                    (left - x0) as u32,
-                    (y - y0) as u32,
-                    (right - left) as u32,
-                );
-                let offset = (left - i64::from(view.x)) as usize * 4;
-                let dst = &mut row[offset..offset + src.len()];
-                if index == 0 {
-                    dst.copy_from_slice(src);
-                } else {
-                    for (top, bottom) in src.chunks_exact(4).zip(dst.chunks_exact_mut(4)) {
-                        over(top, bottom);
-                    }
-                }
-            }
+            Self::composite_row(visible.iter().copied(), view, view.y + local_y, &mut row);
             Image::expand(&row, view.scale, expanded)
         })
     }

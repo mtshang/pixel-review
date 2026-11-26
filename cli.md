@@ -31,17 +31,20 @@ $src = '.\examples\cat.png'
 
 ### 方案评审图
 
-每列对应一张原尺寸静态 PNG。各列共用画布尺寸、倍率、取景、底色及场景落点。第一行按游戏显示倍率看完整素材，第二行用最近邻看指定细节，传入场景时第三行按场景原尺寸显示完整合成图。每列编号从 1 开始。提供不同画布尺寸会报错，需先根据游戏中的定位用 resize 对齐版本。常驻工程可先 canvas export 一张合成快照。
+每列对应一张原尺寸静态 PNG。各版本先平移到共同画布，空白补透明。第一行显示全身，第二行看同一局部，第三行在场景内观察对比与遮挡。显示与场景默认同倍率。原图坐标加该列 offset 即为共同画布坐标。
 
 | 参数 | 作用 |
 |---|---|
 | `--source PNG` | 至少一次，重复时按参数顺序从左到右排列候选。单张素材也可使用。 |
 | `--before PNG` | 可选，将修改前原图固定放在第一列。 |
 | `--display-scale N` | 第一行的正整数窗口倍率。默认 1；有项目约定时显式传入。 |
-| `--region X,Y,W,H`、`--detail-scale N` | 第二行的原图裁框与正整数倍率，省略裁框则看全图。默认按细节长边最接近 320 像素选整数倍率，最小 1。常规 zoom 仍默认以 1600 为目标。 |
+| `--region X,Y,W,H`、`--detail-scale N` | 第二行在共同画布上的裁框与正整数倍率，省略裁框则看全图。默认按细节长边最接近 320 像素选整数倍率，最小 1。常规 zoom 仍默认以 1600 为目标。 |
 | `--background RRGGBB` | 前两行的共同底色，默认 80858C。 |
-| `--scene PNG`、`--at X,Y` | 场景使用实际大小与原透明度。将素材原图的左上角放在场景坐标 X,Y，按透明度合成。省略落点则居中并向下取整。素材画布须完整落在场景内。省略场景只出前两行。 |
-| `--out NEW.png` | 创建新的组合 PNG。preview 返回路径和宽高。columns 含 number、role（before 或 candidate）、path 和各面板 display、detail、可选 scene 的矩形，坐标系是输出整图。回执另含 native_size、detail_region、实际倍率、background、scene 和 at，便于下一轮沿用。 |
+| `--anchor X,Y` | 原图中的水平参考像素和脚底行。从 0 起算。给一次表示所有版本共用该点，或按列顺序各给一个（before 在首列）。缺省时同尺寸保留原始坐标，不同尺寸取各图最低可见行、该行最左和最右可见像素的中点向下取整。全透明图使用画布水平中心与底行。对跳跃、拖地衣摆和投影宜指定锚点。 |
+| `--scene PNG`、`--foreground PNG` | 按底图、候选、前景顺序合成。前景须与底图同尺寸，可重复传入，最后一个在最上层。PNG 模式要求共同画布完整落在场景内。 |
+| `--scene 工程目录 --replace-layer 层名` | 读取已保存的分层工程，临时替换指定层。层序、可见性、各层位置、画布边缘裁切沿用工程。替换层自身隐藏时场景中也隐藏候选。默认将第 1 列原图左上角放在被替换层原来的落点，所有版本共用由此算出的定位。 |
+| `--at X,Y`、`--scene-scale N` | at 用场景原图坐标指定共同画布左上角，PNG 模式省略时居中。场景先在原尺寸合成再最近邻放大，默认采用 display-scale；需要单独观察时传正整数 scene-scale。 |
+| `--out NEW.png` | 创建新的组合 PNG。preview 返回路径和宽高。columns 含 number、role（before 或 candidate）、path 和各面板 display、detail、可选 scene 的矩形，坐标系是输出整图。回执另含 native_size、detail_region、实际倍率、background、scene 和 at，便于下一轮沿用。native_size 为共同画布宽高，common_anchor 是对齐点。各列另有 source_size、anchor 和 offset。scene_scale 给出实际场景倍率，foregrounds 和 replace_layer 记录遮挡来源。 |
 
 ### 地砖与动画预览
 

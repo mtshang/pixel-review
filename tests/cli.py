@@ -89,7 +89,7 @@ class PixelReview(unittest.TestCase):
                 scene.alpha_composite(src,(1,3))
                 for key,expected in [("display",flat.resize((8,6),Image.Resampling.NEAREST)),
                                      ("detail",flat.crop((1,1,3,3)).resize((6,6),Image.Resampling.NEAREST)),
-                                     ("scene",scene)]:
+                                     ("scene",scene.resize((18,14),Image.Resampling.NEAREST))]:
                     p=column[key]
                     self.assertEqual((p["width"],p["height"]),expected.size)
                     self.assertEqual(im.crop((p["x"],p["y"],p["x"]+p["width"],p["y"]+p["height"])).tobytes(),
@@ -103,10 +103,63 @@ class PixelReview(unittest.TestCase):
         original=(self.dir/"board.png").read_bytes()
         self.cli(*opts,"--out","board.png",code=2)
         self.assertEqual((self.dir/"board.png").read_bytes(),original)
-        for flags in (["--at","0,0"],["--region","0,2,4,2"],["--source","room.png"],
+        for flags in (["--at","0,0"],["--region","0,2,4,2"],["--anchor","0,0","--anchor","0,0"],
                       ["--scene","room.png","--at","6,5"],["--display-scale","0"],["--detail-scale","0"]):
             self.cli(*opts,*flags,"--out","bad.png",code=2)
             self.assertFalse((self.dir/"bad.png").exists())
+
+    def test_review_alignment_scene_layers_and_zoom(self):
+        small = Image.new("RGBA",(4,4))
+        small.putpixel((2,2),(240,80,48,255))
+        small.save(self.dir/"old.png")
+        large = Image.new("RGBA",(7,5))
+        large.paste(small,(1,1))
+        large.putpixel((6,2),(0,255,20,255))
+        large.save(self.dir/"new.png")
+        room = Image.new("RGBA",(10,7),(25,50,70,255))
+        front = Image.new("RGBA",room.size)
+        front.putpixel((4,4),(10,10,200,128))
+        room.save(self.dir/"room.png")
+        front.save(self.dir/"rail.png")
+        args=["review-sheet","--before","old.png","--source","new.png","--display-scale","2","--detail-scale","1"]
+        def crop(board,region):
+            x,y,w,h=(region[k] for k in ("x","y","width","height"))
+            return board.crop((x,y,x+w,y+h))
+        def check(report,scale):
+            self.assertEqual(report["native_size"],[7,5])
+            self.assertEqual(report["at"],[1,1])
+            self.assertEqual([c["offset"] for c in report["columns"]],[[1,1],[0,0]])
+            with Image.open(report["preview"]["path"]) as board:
+                for c,im,pos in zip(report["columns"],[small,large],[(2,2),(1,1)]):
+                    expected=room.copy()
+                    expected.alpha_composite(im,pos)
+                    expected.alpha_composite(front)
+                    panel=crop(board,c["scene"])
+                    self.assertEqual(panel.size,(10*scale,7*scale))
+                    self.assertEqual(panel.tobytes(),expected.resize(panel.size,Image.Resampling.NEAREST).tobytes())
+        r=self.cli(*args,"--scene","room.png","--at","1,1","--foreground","rail.png","--out","sheet.png")
+        check(r,2)
+        self.assertEqual(r["common_anchor"],[3,3])
+        explicit=["--anchor","2,2","--anchor","3,3"]
+        folder=self.dir/"project"
+        folder.mkdir()
+        layers=[]
+        for i,(name,im,pos,visible) in enumerate([
+                ("floor",room,[0,0],True),("actor",small,[2,2],True),
+                ("hidden",room,[0,0],False),("rail",front,[0,0],True)]):
+            leaf=f"layer-{i}.png"
+            im.save(folder/leaf)
+            layers.append(dict(name=name,file=leaf,at=pos,visible=visible))
+        manifest=json.dumps(dict(format="pixel-review.project/1",size=[10,7],active="rail",layers=layers))
+        (folder/"project.json").write_text(manifest)
+        r=self.cli(*args,*explicit,"--scene",folder,"--replace-layer","actor","--scene-scale","3","--out","project.png")
+        check(r,3)
+        self.assertEqual((folder/"project.json").read_text(),manifest)
+        for extra in (["--scene-scale","0"],["--foreground","old.png"],
+                      ["--replace-layer","missing"]):
+            self.cli(*args,"--scene","room.png",*extra,"--out","bad.png",code=2)
+        self.cli(*args,"--scene",folder,"--replace-layer","missing","--out","bad.png",code=2)
+        self.assertFalse((self.dir/"bad.png").exists())
 
     def test_tile_repetition_and_wall_layout(self):
         crop = self.rgba.crop((1,0,3,2))
