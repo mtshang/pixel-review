@@ -1,2 +1,12 @@
 /target/
 /work/
+/local/
+*.pixel-review.lock
+__pycache__/
+/*.local.json
+
+# Default outputs when the bundled cat is used directly as input.
+/examples/*@*x.png
+!/examples/cat@8x.png
+/examples/*.edited.png
+/examples/*.changes.png

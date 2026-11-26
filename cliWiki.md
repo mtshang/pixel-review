@@ -10,7 +10,9 @@
 
 ~~~powershell
 $px = '.\scripts\pixel-review.exe'
-$cat = '.\examples\cat.png'
+$cat = '.\work\cat.png'
+$null = New-Item -ItemType Directory -Force '.\work'
+if (!(Test-Path -LiteralPath $cat)) { Copy-Item -LiteralPath '.\examples\cat.png' -Destination $cat }
 ~~~
 
 `& $px` 表示运行工具。跟在后面的第一个词选择功能，`--source` 指定要读取的图片。图片左上角是坐标 (0,0)，向右 x 增大，向下 y 增大。小猫最右一列是 x=13，最后一行是 y=9。
@@ -50,7 +52,7 @@ $cat = '.\examples\cat.png'
 大图可直接存成文件，终端只显示保存位置和选区。文件名需要是新的，输出目录要已存在：
 
 ~~~powershell
-& $px matrix --source $cat --out '.\cat-colors.json'
+& $px matrix --source $cat --out '.\work\cat-colors.json'
 ~~~
 
 ## 二、观察和核对预览
@@ -229,8 +231,8 @@ New-Item -ItemType Directory -Force '.\work' | Out-Null
 ~~~powershell
 $px = '.\scripts\pixel-review.exe'
 New-Item -ItemType Directory -Force '.\work' | Out-Null
-& $px canvas open --canvas '素材' --source '.\examples\cat.png'
-& $px canvas open --canvas '摆放练习' --source '.\examples\cat.png'
+& $px canvas open --canvas '素材' --source $cat
+& $px canvas open --canvas '摆放练习' --source $cat
 & $px canvas copy --canvas '素材' --rect '4,5,2,1' --clip '.\work\眼睛.clip.json'
 & $px canvas close --canvas '素材'
 ~~~
@@ -260,7 +262,7 @@ New-Item -ItemType Directory -Force '.\work' | Out-Null
 ~~~powershell
 $px = '.\scripts\pixel-review.exe'
 New-Item -ItemType Directory -Force '.\work' | Out-Null
-& $px canvas open --canvas 猫 --source '.\examples\cat.png'
+& $px canvas open --canvas 猫 --source $cat
 & $px canvas layer-add --canvas 猫 --layer 花纹 --size '2,1' --at '4,5'
 '{"palette":{"A":"#3877AA","B":"#80BBCC"},"ops":[{"at":[0,0],"rows":["AB"]}]}' | Set-Content -Encoding utf8 '.\work\花纹.json'
 & $px canvas edit --canvas 猫 --layer 花纹 --patch '.\work\花纹.json'
@@ -320,54 +322,43 @@ $pal = '.\work\角色色表.json'
 
 ## 八、看地砖铺满以后，墙角怎样接起来
 
-在手册目录打开 PowerShell，使用随包的钟楼图集。第一条练习从图集左上取一块 20×20 地砖，连续铺 5 行 5 列。观察砖缝能否顺着相邻格延伸，也看看相同的石面斑点会不会排成显眼的直线。
+在手册目录打开 PowerShell。下面在 work 中画两块 4×4 的砖，字母 A 代表地板、B 代表墙边。先观察单砖铺满后的接缝，再把两种砖拼成一间小屋。
 
 ~~~powershell
 $px = '.\scripts\pixel-review.exe'
-$assets = '.\examples\review'
-& $px tile-preview --source "$assets\tower-atlas.png" --region '0,0,20,20' --repeat '5,5' --scale 4 --out '.\work\五乘五.png'
-& $px tile-preview --layout "$assets\tower-layout.json" --overlay "$assets\step-1.png" --at '31,22' --scale 4 --out '.\work\钟楼房间.png'
+& $px create --size '8,4' --out '.\work\tiles.png'
+'{"palette":{"X":"51565D","O":"ADB7B2","H":"C8AF92"},"ops":[{"at":[0,0],"rows":["XXXXHHHH","XOOOXXXX","XOOOXXXX","XOOOXXXX"]}]}' | Set-Content -Encoding utf8 '.\work\tiles-patch.json'
+& $px edit --source '.\work\tiles.png' --patch '.\work\tiles-patch.json' --edited-source '.\work\atlas.png' --scale 1 --no-preview-changes
+& $px tile-preview --source '.\work\atlas.png' --region '0,0,4,4' --repeat '5,5' --scale 4 --out '.\work\repeat.png'
+'{"tiles":{"A":{"source":"atlas.png","region":[0,0,4,4]},"B":{"source":"atlas.png","region":[4,0,4,4]}},"rows":["BBBBBB","BAAAAB","BAAAAB","BAAAAB","BBBBBB"]}' | Set-Content -Encoding utf8 '.\work\room.json'
+& $px tile-preview --layout '.\work\room.json' --scale 1 --out '.\work\room.png'
 ~~~
 
-第二张图按布局拼成 L 形房间，可以看内凹墙角、外凸墙角与直墙的连接。布局中每个字母代表一块砖，字母往右移一位就往右移动一整块砖。人物的 (31,22) 则按原图像素定位，换预览倍率时仍然站在同一处。[打开布局样例](examples/review/tower-layout.json)
+room.png 是宽 24、高 20 的原尺寸底图，可直接用于第十一节的组合评审。使用自己的直墙、内角和外角时，给每种砖分配字符，在布局中按它们实际相邻的顺序摆放。
 
 ## 九、看动画的节奏、重影与脚底
 
-下面的四帧沿用 20×40 的侧面角色。随包的 walk-right.json 已按播放顺序列出四张图，帧率为 6，脚底线在原图第 37 行。在手册所在目录打开 PowerShell，运行下面两条命令。再次练习时给输出换个新名字。
+用随包的小猫做一个起跳练习。两帧的画布都是 14×12，第二帧的小猫比第一帧高 1 格。第三个播放位置重复第一帧，便于检查落回原地时的衔接。
 
 ~~~powershell
 $px = '.\scripts\pixel-review.exe'
-$walk = '.\examples\review\walk-right.json'
-& $px animation --config $walk --scale 8 --out '.\work\步态.apng'
-& $px onion --config $walk --index 2 --scale 8 --out '.\work\第二帧.png'
+& $px resize --source '.\examples\cat.png' --top 2 --out '.\work\land.png'
+& $px resize --source '.\examples\cat.png' --top 1 --bottom 1 --out '.\work\hop.png'
+$walk = '.\work\hop.json'
+& $px animation-config --frame '.\work\land.png' --frame '.\work\hop.png' --frame '.\work\land.png' --fps 6 --baseline 11 --out $walk
+& $px animation --config $walk --scale 8 --out '.\work\hop.apng'
+& $px onion --config $walk --index 2 --scale 8 --out '.\work\onion.png'
 ~~~
 
-这次会生成三张用途不同的图。
-
-| 打开哪个文件 | 怎么看 |
-|---|---|
-| 步态.frames.png | 任意静态看图入口都能看到完整横排。按上方 1 至 4 的编号比较头顶高度和双腿的开合，再检查第 4 帧接回第 1 帧。 |
-| 步态.apng | 把文件拖到 Edge 或 Chrome 标签页，观察几次循环，检查停顿或滑步。在聊天缩略图里只看到一帧时，可以用上面的横排图逐帧检查。 |
-| 第二帧.png | 第 2 帧保留原色，青色标出上一帧的变化位置，洋红标出下一帧。叠色过浓可加 `--opacity 25`。 |
-
-想试更快的节奏，在 animation 后加 `--fps 10`。想隐藏脚底线，加 `--no-baseline`。两者都只影响本次输出。想指定横图名称，用 `--strip-out '.\work\步态横排.png'`。较长的动画只需播放时可用 `--no-strip`。省略 `--scale` 时，工具按整条横排另选整数倍率，方便一眼看到各帧。
-
-制作自己的动作时，按下面的方式把帧序保存一次。以后只需传配置路径。也可以直接编辑 JSON，将 frames 数组中的文件名按播放顺序排列。把配置与图片一起挪到别处时，保留它们的相对位置。[打开四帧配置示例](examples/review/walk-right.json)
-
-~~~powershell
-$frames = 1..4 | ForEach-Object { '--frame'; ".\examples\review\step-$_.png" }
-& $px animation-config @frames --fps 6 --baseline 37 --out '.\work\右行.json'
-~~~
-
-金线标在第 37 行的下沿，脚底恰好还剩两格透明空间。报告里的 bottom_delta=-1 表示这一帧最下方可见像素比线高一格。身体抬高、脚仍着地是合理的步态；画面上的披风或阴影也可能比脚更低。结合叠看判断，工具保留原帧的位置。
+打开 hop.frames.png 可按编号比较三帧的位置。把 hop.apng 拖到浏览器标签页看循环速度，打开 onion.png 看第 2 帧与邻帧的叠色。配置保存帧序、帧率和基线，可在下次修改猫的姿势后复用。金线在第 11 行的下沿，第 2 帧的 bottom_delta 为 −1。叠色过浓用 `--opacity 25`，临时隐藏基线用 `--no-baseline`，只要播放文件时用 `--no-strip`。
 
 ## 十、给伸手动作留空间，保持鞋底对齐
 
-假设角色原图宽 20、高 40，鞋底在第 37 行。为伸向右边的手多留 4 格，只扩右边就能得到 24×40 的画布，原有像素的坐标保持原值。已有 PNG 可以直接另存。
+假设角色原图宽 20、高 40，鞋底在第 37 行。为伸向右边的手多留 4 格，只扩右边就能得到 24×40 的画布，原有像素的坐标保持原值。以下命令使用你自己的 20×40 角色，将路径换成实际文件。
 
 ~~~powershell
 $px = '.\scripts\pixel-review.exe'
-& $px resize --source '.\examples\review\step-1.png' --right 4 --baseline 37 --out '.\work\伸手.png'
+& $px resize --source '.\work\角色原图.png' --right 4 --baseline 37 --out '.\work\伸手.png'
 & $px resize --source '.\work\伸手.png' --crop '0,0,20,40' --out '.\work\裁回.png'
 ~~~
 
@@ -388,16 +379,14 @@ $px = '.\scripts\pixel-review.exe'
 
 起稿先看轮廓和主要色块，能在游戏大小下认出姿态，再加五官或材质。如果造型仍有两个方向，AI 可用一张评审图让你直接说「保留第 1 列的剪影，把第 2 列的发饰带过来」。细节改完后，用同样的设置和上一版并排复看。
 
-下面用随包的两张步态图练习比较姿势。第一条命令把钟楼拼成原尺寸的场景底图，第二条生成评审图。自己的项目可以直接传实际房间的 PNG。
+用第八节的房间和第九节的起跳动作一起评审。每一列都把小猫放在房间的 (5,4)，可以比较落脚高度和背景对比。
 
 ~~~powershell
 $px = '.\scripts\pixel-review.exe'
-$art = '.\examples\review'
-& $px tile-preview --layout "$art\tower-layout.json" --scale 1 --out '.\work\房间.png'
-& $px review-sheet --source "$art\step-1.png" --source "$art\step-2.png" --display-scale 2 --region '1,24,18,16' --detail-scale 10 --scene '.\work\房间.png' --at '31,22' --out '.\work\步姿评审.png'
+& $px review-sheet --before '.\work\land.png' --source '.\work\hop.png' --display-scale 2 --region '0,6,14,6' --detail-scale 10 --scene '.\work\room.png' --at '5,4' --out '.\work\hop-review.png'
 ~~~
 
-打开「步姿评审.png」。第一行看两倍显示时整个人的姿势，第二行只放大腿脚，第三行看两人在相同房间、相同位置的效果。每个编号对应一整列。换成脸部评审时，只要更改 `--region`。有上一版时用 `--before 上版.png --source 新版.png`，第 1 列就是上版。只看一张新稿时留一个 `--source` 即可。窗口倍率要填游戏实际值；示例中的 2 倍供练习。[参数和坐标说明](cli.md#方案评审图)
+打开 hop-review.png。上排看完整姿势，中排看放大的腿脚，下排看同一场景中的效果。第 1 列是旧版。比较多个候选时重复 `--source`；窗口倍率按你的游戏设置。[参数和坐标说明](cli.md#方案评审图)
 
 ### 扩边后，比较站位与遮挡
 
@@ -413,7 +402,7 @@ $art = '.\examples\review'
 
 ~~~powershell
 & $px --help
-& $px licenses --out '.\third-party-notices.zip'
+& $px licenses --out '.\work\third-party-notices.zip'
 ~~~
 
 `licenses` 将 EXE 内附的第三方许可写到一个新的 ZIP 文件。自动化调用可查看 `$LASTEXITCODE`。0 代表成功，1 表示 compare 找到差异，2 表示参数、文件或读写出错，原因可在 JSON 的 error 字段中找到。[完整参数与返回字段](cli.md)

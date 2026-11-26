@@ -7,6 +7,12 @@ description: 在 Windows x64 上按项目美术规范从零绘制或迭代 PNG �
 
 从本文件所在目录定位 `scripts/pixel-review.exe`。传给程序的图片路径相对于调用者的当前目录。它输出一行 UTF-8 JSON，适合直接解析。全量参数和输出契约见根目录的 [CLI 接口总览](cli.md)。
 
+## 先确定本次图片输出目录
+
+首次要写出图片时，先问用户「这次的成品、放大预览和评审图保存在哪个文件夹？」等用户指定后再写。若用户已在请求中给出输出文件路径、目录，或明确约定本项目固定使用某个目录，就沿用该位置。只查询尺寸、颜色等数据时可直接读取原图。参考图库和图片输出目录分别确认，候选稿与预览保存在本次输出目录。
+
+将选定目录解析为绝对路径。zoom 传 `--out-dir DIR`；edit 传 `--edited-source DIR/新版.png --out-dir DIR`，这样主预览与自动局部预览也落在这里。canvas preview/export、review-sheet、animation 等命令使用目录下的 `--out` 路径，动画横排图会跟随主输出。pick 和 compare 读取先前返回的 `preview.path`。在同一次改稿中复用这个目录，保留上一版所需的文件。
+
 需要区分画布尺寸与人物尺寸时用 `bounds --source FILE`。需要原图坐标和多点颜色时用 `matrix --source FILE [--region X,Y,W,H]`。大矩阵可写入 `--out NEW.json`。这两个命令可独立调用。
 
 ## 项目美术资料

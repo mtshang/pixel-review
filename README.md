@@ -12,7 +12,7 @@
 
 从零画角色时，可以直接创建透明画布，按笔撤销或重做，并让正面、背面和其他素材共用一份色表。[创作、撤销与统一配色练习](cliWiki.md#七从零起稿试错和统一配色)
 
-制作地图时，可以把一块地砖铺成整片，或把内角、外角和直墙拼成房间，再放入角色看比例。制作动作时，可以把多张 PNG 按帧率循环播放，用前后帧叠看和脚底线检查跳动。[钟楼和角色的完整练习](cliWiki.md#八看地砖铺满以后墙角怎样接起来)
+制作地图时，可以把一块地砖铺成整片，或把内角、外角和直墙拼成房间，再放入角色看比例。制作动作时，可以把多张 PNG 按帧率循环播放，用前后帧叠看和脚底线检查跳动。[地砖铺设与拼接练习](cliWiki.md#八看地砖铺满以后墙角怎样接起来)
 
 每个动作可以用一份配置记住帧序、帧率和脚底线。生成播放文件时会同时得到一张带帧号的横排 PNG，即使看图窗口只显示静态画面，也能看清每一步。角色的手臂需要更多空间时，可以只向右加几格，指定需要继续绘制的图层一起扩边。[动画练习](cliWiki.md#九看动画的节奏重影与脚底) · [伸手动作扩边练习](cliWiki.md#十给伸手动作留空间保持鞋底对齐)
 
@@ -22,15 +22,19 @@
 
 要把几处分开的像素一起挪动，可以混选点和矩形。比如将两只眼睛上移一格，或把眼睛和眉毛存成一份剪贴文件，贴到另一张表情图。两只眼睛之间未选中的格子会保留目标图的颜色。[移动、镜像和粘贴的练习](cliWiki.md#四选中已有像素再移动或复制)
 
-在本文件所在目录打开 PowerShell。下面的命令使用随附的透明 PNG，只需运行 `scripts\pixel-review.exe`。
+随包的两张示例图是教程输入的小猫和本页展示的八倍预览。AI 在首次输出图片前会询问保存目录。手动练习时，以下命令把小猫复制到 Git 已忽略的 work 目录，预览和改稿都写在这里。个人色表、动画配置等如需放在工具仓库内，可存入同样被忽略的 local 目录，或在仓库根目录命名为 `*.local.json`。配置按命令参数显式读取。
+
+在本文件所在目录打开 PowerShell，只需运行 `scripts\pixel-review.exe`。
 
 ~~~powershell
 $px = '.\scripts\pixel-review.exe'
-$cat = '.\examples\cat.png'
+$cat = '.\work\cat.png'
+$null = New-Item -ItemType Directory -Force '.\work'
+if (!(Test-Path -LiteralPath $cat)) { Copy-Item -LiteralPath '.\examples\cat.png' -Destination $cat }
 & $px zoom --source $cat --scale 8
 ~~~
 
-打开输出中的 `preview.path`，也就是 `examples\cat@8x.png`。原图宽 14、高 10，预览宽 112、高 80。查询预览上靠左的那只眼睛：
+打开输出中的 `preview.path`，也就是 `work\cat@8x.png`。原图宽 14、高 10，预览宽 112、高 80。查询预览上靠左的那只眼睛：
 
 ~~~powershell
 & $px pick --source $cat --scale 8 --pick-preview '35,42'
@@ -65,7 +69,7 @@ Rust、Cargo、PNG 编解码库和 Python 均无需另装。Rust 编译器的后
 本次构建把 Rust 代码和 PNG 依赖链接进 EXE，并内嵌各组件的许可文本及版权声明。png 0.18.1 采用 MIT 或 Apache-2.0；归档包含本次构建的依赖清单、Rust 标准库声明和 GNU 工具链运行库的许可及例外。分发时可保持 EXE 原样，单文件仍能导出这些文本。[png 项目](https://github.com/image-rs/image-png) · [Rust 链接说明](https://doc.rust-lang.org/reference/linkage.html) · [本版许可归档](references/third-party.zip)
 
 ~~~powershell
-.\scripts\pixel-review.exe licenses --out .\third-party-notices.zip
+.\scripts\pixel-review.exe licenses --out .\work\third-party-notices.zip
 ~~~
 
 ## 实测耗时

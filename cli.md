@@ -59,9 +59,9 @@ $src = '.\examples\cat.png'
 | `onion --frame A.png --frame B.png --index N --out NEW.png` | 输出第 N 帧的静态叠看，N 从 1 起。前一帧为青色，后一帧为洋红，按该顺序叠在当前帧上。只叠与当前 RGBA 不同且相邻帧 alpha 大于零的位置。`--opacity 0..100` 默认 40%，乘以邻帧原透明度。端点只用存在的一侧；检查循环接点时可显式传末帧、首帧、第二帧并选 index 2。 |
 | 两种帧预览的可选参数 | `--baseline Y` 在零起算原图第 Y 行下沿加一条金色虚线（预览图上 1 像素厚）。frame_count 是输入帧数。animation 的 frames 数组报告每帧，onion 仅报告当前帧，另给 previous、next 路径。bounds 来自绘制参考线前的源像素，bottom_y 是最后一个可见行，bottom_delta=bottom_y−Y，正值在参考线下方。全透明帧的 bounds、bottom_y、bottom_delta 为 null。 |
 
-布局文件的最小例子为 `{"tiles":{"A":{"source":"atlas.png","region":[0,0,20,20]},"B":{"source":"atlas.png","region":[20,0,20,20]}},"rows":["AB","BA"]}`。[完整钟楼布局](examples/review/tower-layout.json)
+布局文件的最小例子为 `{"tiles":{"A":{"source":"atlas.png","region":[0,0,20,20]},"B":{"source":"atlas.png","region":[20,0,20,20]}},"rows":["AB","BA"]}`。
 
-**动画配置。** `animation-config --frame A.png --frame B.png [--fps N] [--baseline Y] --out NEW.json` 写出 UTF-8 JSON。格式示例为 `{"format":"pixel-review.animation/1","frames":["a.png","b.png"],"fps":6,"baseline":37}`。frames 是有序的静态 PNG 路径数组，至少两项，允许重复。相对路径以配置文件目录为起点，可以带子目录或 `..`。写出时优先采用相对路径，跨驱动器时采用绝对路径。fps 可省略，默认 8。baseline 缺省或 null 表示无参考线。配置保存时会检查各帧宽高和基线范围。[随包的四帧配置](examples/review/walk-right.json)
+**动画配置。** `animation-config --frame A.png --frame B.png [--fps N] [--baseline Y] --out NEW.json` 写出 UTF-8 JSON。格式示例为 `{"format":"pixel-review.animation/1","frames":["a.png","b.png"],"fps":6,"baseline":37}`。frames 是有序的静态 PNG 路径数组，至少两项，允许重复。相对路径以配置文件目录为起点，可以带子目录或 `..`。写出时优先采用相对路径，跨驱动器时采用绝对路径。fps 可省略，默认 8。baseline 缺省或 null 表示无参考线。配置保存时会检查各帧宽高和基线范围。
 
 `animation`、`onion` 和 `animation-config` 均支持用 `--config CFG.json` 代替所有 `--frame`。`--baseline Y` 或 `--no-baseline` 临时覆盖配置，animation 和 animation-config 也可传 `--fps N`。animation-config 可将覆盖后的配置另存为新文件。读取配置时回执的 config 是其绝对路径。
 
